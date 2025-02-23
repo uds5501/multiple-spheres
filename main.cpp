@@ -70,7 +70,7 @@ int main()
 	Shader lightShader("shaders/light.vert", "shaders/light.frag");
 
 	// Define multiple spheres at different positions
-	std::vector<Sphere*> spheres = {
+	std::vector<Sphere *> spheres = {
 		new Sphere(0.3f, 20, 20, glm::vec3(-1.0f, 0.0f, -2.0f)),
 		new Sphere(0.3f, 20, 20, glm::vec3(1.0f, 0.0f, -2.0f)),
 		new Sphere(0.3f, 20, 20, glm::vec3(0.0f, 1.0f, -3.0f)),
@@ -107,6 +107,8 @@ int main()
 	glEnable(GL_DEPTH_TEST);
 
 	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 5.0f));
+	double lastTime = glfwGetTime();
+	int nbFrames = 0;
 
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
@@ -114,7 +116,16 @@ int main()
 		// Specify the background color
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+		double currentTime = glfwGetTime();
+		nbFrames++;
+		if (currentTime - lastTime >= 1.0)
+		{ // If last update was 1 second ago
+			double fps = nbFrames / (currentTime - lastTime);
+			nbFrames = 0;
+			lastTime = currentTime;
+			std::string newTitle = "ALotOfSpheres | FPS: " + std::to_string((int)fps);
+    		glfwSetWindowTitle(window, newTitle.c_str());
+		}
 		// Activate main object shader
 		shaderProgram.Activate();
 
@@ -129,10 +140,10 @@ int main()
 		// 	std::cout << "OpenGL error at start of frame: " << err << "\n";
 		// }
 		// Draw all spheres
-		for (Sphere* sphere : spheres)
+		for (Sphere *sphere : spheres)
 		{
 			// sphere.updateModelMatrix();
-			sphere -> draw(shaderProgram);
+			sphere->draw(shaderProgram);
 		}
 
 		// Now activate light shader and render the light source
@@ -143,7 +154,6 @@ int main()
 		glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
 		glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(int), GL_UNSIGNED_INT, 0);
 		lightVAO.Unbind();
-		
 
 		// Swap buffers and poll events
 		glfwSwapBuffers(window);
