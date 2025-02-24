@@ -14,6 +14,7 @@
 #include "buffers/EBO.h"
 #include "camera/Camera.h"
 #include "shapes/Sphere.h"
+#include "shapes/InstancedSphere.h"
 
 const unsigned int width = 800;
 const unsigned int height = 800;
@@ -68,17 +69,39 @@ int main()
 
 	Shader shaderProgram("shaders/default.vert", "shaders/default.frag");
 	Shader lightShader("shaders/light.vert", "shaders/light.frag");
+	Shader instanceShader("shaders/instance.vert", "shaders/default.frag");
 
 	// Define multiple spheres at different positions
-	std::vector<Sphere *> spheres = {
-		new Sphere(0.3f, 20, 20, glm::vec3(-1.0f, 0.0f, -2.0f)),
-		new Sphere(0.3f, 20, 20, glm::vec3(1.0f, 0.0f, -2.0f)),
-		new Sphere(0.3f, 20, 20, glm::vec3(0.0f, 1.0f, -3.0f)),
-		new Sphere(0.3f, 20, 20, glm::vec3(0.0f, -1.0f, -3.0f)),
-		new Sphere(0.3f, 20, 20, glm::vec3(-1.5f, 1.5f, -4.0f)),
-		new Sphere(0.3f, 20, 20, glm::vec3(1.5f, 1.5f, -4.0f)),
-		new Sphere(0.3f, 20, 20, glm::vec3(-1.5f, -1.5f, -4.0f)),
-		new Sphere(0.3f, 20, 20, glm::vec3(1.5f, -1.5f, -4.0f))};
+	// std::vector<Sphere *> spheres = {
+	// 	new Sphere(0.3f, 20, 20, glm::vec3(-1.0f, 0.0f, -2.0f)),
+	// 	new Sphere(0.3f, 20, 20, glm::vec3(1.0f, 0.0f, -2.0f)),
+	// 	new Sphere(0.3f, 20, 20, glm::vec3(0.0f, 1.0f, -3.0f)),
+	// 	new Sphere(0.6f, 20, 20, glm::vec3(0.0f, -1.0f, -3.0f)),
+	// 	new Sphere(0.3f, 20, 20, glm::vec3(-1.5f, 1.5f, -4.0f)),
+	// 	new Sphere(0.7f, 20, 20, glm::vec3(1.5f, 1.5f, -4.0f)),
+	// 	new Sphere(0.3f, 20, 20, glm::vec3(-1.5f, -1.5f, -4.0f)),
+	// 	new Sphere(0.3f, 20, 20, glm::vec3(1.5f, -1.5f, -4.0f))};
+	std::vector<glm::mat4> transforms;
+	int numberOfSpheres = 10000;
+	float spread = 500.0f;
+	transforms.reserve(numberOfSpheres);
+
+	for (int i = 0; i < numberOfSpheres; i++)
+	{
+		// Generate random position in a large range
+		float x = static_cast<float>(rand()) / RAND_MAX * spread - (spread / 2); // Range: -spread/2 to spread/2
+		float y = static_cast<float>(rand()) / RAND_MAX * spread - (spread / 2);
+		float z = static_cast<float>(rand()) / RAND_MAX * spread - (spread / 2);
+
+		// Apply minor random rotation and scaling for variety
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
+		transform = glm::scale(transform, glm::vec3(0.5f + static_cast<float>(rand()) / RAND_MAX * 2.0f)); // Scale 0.5 to 2.5
+		transform *= glm::rotate(glm::mat4(1.0f), static_cast<float>(rand()) / RAND_MAX * glm::radians(360.0f), glm::vec3(0, 1, 0));
+
+		transforms.push_back(transform);
+	}
+
+	InstancedSphere *spheres = new InstancedSphere(0.6f, 30, 30, transforms);
 
 	VAO lightVAO;
 	lightVAO.Bind();
@@ -103,6 +126,9 @@ int main()
 	shaderProgram.Activate();
 	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPosition"), lightPos.x, lightPos.y, lightPos.z);
+	instanceShader.Activate();
+	glUniform4f(glGetUniformLocation(instanceShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(instanceShader.ID, "lightPosition"), lightPos.x, lightPos.y, lightPos.z);
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -124,27 +150,23 @@ int main()
 			nbFrames = 0;
 			lastTime = currentTime;
 			std::string newTitle = "ALotOfSpheres | FPS: " + std::to_string((int)fps);
-    		glfwSetWindowTitle(window, newTitle.c_str());
+			glfwSetWindowTitle(window, newTitle.c_str());
 		}
 		// Activate main object shader
-		shaderProgram.Activate();
+		instanceShader.Activate();
 
 		// Update camera matrix & position
 		camera.Inputs(window);
-		camera.updateMatrix(45.0f, 0.1f, 100.0f);
-		camera.Matrix(shaderProgram, "camMatrix");
+		camera.updateMatrix(45.0f, 0.1f, 1000.0f);
+		camera.Matrix(instanceShader, "camMatrix");
 
-		// GLenum err;
-		// while ((err = glGetError()) != GL_NO_ERROR)
-		// {
-		// 	std::cout << "OpenGL error at start of frame: " << err << "\n";
-		// }
 		// Draw all spheres
-		for (Sphere *sphere : spheres)
-		{
-			// sphere.updateModelMatrix();
-			sphere->draw(shaderProgram);
-		}
+		// for (Sphere *sphere : spheres)
+		// {
+		// 	// sphere.updateModelMatrix();
+		// 	sphere->draw(shaderProgram);
+		// }
+		spheres->drawInstanced(instanceShader, numberOfSpheres);
 
 		// Now activate light shader and render the light source
 		lightShader.Activate();
@@ -166,6 +188,9 @@ int main()
 
 	lightShader.Delete();
 	shaderProgram.Delete();
+	instanceShader.Delete();
+
+	delete spheres;
 	// Delete window before ending the program
 	glfwDestroyWindow(window);
 	// Terminate GLFW before ending the program

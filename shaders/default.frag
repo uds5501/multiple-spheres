@@ -16,18 +16,18 @@ void main()
 
     // Adjusted Attenuation to avoid extreme fading
     float Kc = 1.0;
-    float Kl = 0.02;  // Lower attenuation
-    float Kq = 0.004; // Lower attenuation
+    float Kl = 0.01;  // Lower attenuation
+    float Kq = 0.002; // Lower attenuation
     float attenuation = 1.0 / (Kc + Kl * distance + Kq * distance * distance);
 
     // Ambient Light
-    float ambient = 0.2f;
+    float ambient = 0.45f;
 
     // Diffuse Light
     float diffuse = max(dot(normal, lightDirection), 0.0f);
 
     // Specular Light (Smoother, Softer Highlights)
-    float specularLight = 0.3;
+    float specularLight = 1.0;
     vec3 viewDirection = normalize(cameraPosition - currentPosition);
     vec3 reflectDirection = reflect(-lightDirection, normal);
     float specAmount = pow(max(dot(viewDirection, reflectDirection), 0.0f), 16);  // Smoother reflection

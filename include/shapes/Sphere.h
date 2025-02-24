@@ -20,6 +20,7 @@ class Sphere {
 public:
     VAO shapeVAO; 
     VBO shapeVBO;
+    VBO instanceVBO;
     EBO shapeEBO;
     
     std::vector<float> vertices;
