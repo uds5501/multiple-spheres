@@ -20,13 +20,14 @@ public:
 	// Constructor that generates a Vertex Buffer Object and links it to vertices
 	VBO(GLfloat *vertices, GLsizeiptr size);
 	VBO(std::vector<glm::mat4> &mat4s);
-
+	VBO(std::vector<float> colors);
 	// Binds the VBO
 	void Bind();
 	// Unbinds the VBO
 	void Unbind();
 	// Deletes the VBO
 	void Delete();
+	void UpdateData(std::vector<float> &colors);
 };
 
 #endif

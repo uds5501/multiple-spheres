@@ -45,6 +45,42 @@ GLuint lightIndices[] =
 		4, 5, 6,
 		4, 6, 7};
 
+int findHoveredSphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayDir,
+					  const std::vector<glm::mat4> &transforms, float radius)
+{
+	int closestSphereIndex = -1;
+	float closestDist = std::numeric_limits<float>::max();
+
+	for (size_t i = 0; i < transforms.size(); i++)
+	{
+		// Extract position from transform matrix
+		glm::vec3 sphereCenter = glm::vec3(transforms[i][3]);
+
+		// Extract scale from transform matrix (assuming uniform scaling)
+		float scale = glm::length(glm::vec3(transforms[i][0]));
+		float scaledRadius = radius * scale;
+
+		// Ray-sphere intersection
+		glm::vec3 oc = rayOrigin - sphereCenter;
+		float a = glm::dot(rayDir, rayDir);
+		float b = 2.0f * glm::dot(oc, rayDir);
+		float c = glm::dot(oc, oc) - scaledRadius * scaledRadius;
+		float discriminant = b * b - 4 * a * c;
+
+		if (discriminant >= 0)
+		{
+			float dist = (-b - sqrt(discriminant)) / (2.0f * a);
+			if (dist > 0 && dist < closestDist)
+			{
+				closestDist = dist;
+				closestSphereIndex = i;
+			}
+		}
+	}
+
+	return closestSphereIndex;
+}
+
 int main()
 {
 	// Initialize GLFW
@@ -67,7 +103,7 @@ int main()
 	gladLoadGL();
 	glViewport(0, 0, width, height);
 
-	Shader shaderProgram("shaders/default.vert", "shaders/default.frag");
+	// Shader shaderProgram("shaders/default.vert", "shaders/default.frag");
 	Shader lightShader("shaders/light.vert", "shaders/light.frag");
 	Shader instanceShader("shaders/instance.vert", "shaders/default.frag");
 
@@ -82,7 +118,7 @@ int main()
 	// 	new Sphere(0.3f, 20, 20, glm::vec3(-1.5f, -1.5f, -4.0f)),
 	// 	new Sphere(0.3f, 20, 20, glm::vec3(1.5f, -1.5f, -4.0f))};
 	std::vector<glm::mat4> transforms;
-	int numberOfSpheres = 10000;
+	int numberOfSpheres = 100000;
 	float spread = 500.0f;
 	transforms.reserve(numberOfSpheres);
 
@@ -96,12 +132,11 @@ int main()
 		// Apply minor random rotation and scaling for variety
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
 		transform = glm::scale(transform, glm::vec3(0.5f + static_cast<float>(rand()) / RAND_MAX * 2.0f)); // Scale 0.5 to 2.5
-		transform *= glm::rotate(glm::mat4(1.0f), static_cast<float>(rand()) / RAND_MAX * glm::radians(360.0f), glm::vec3(0, 1, 0));
 
 		transforms.push_back(transform);
 	}
 
-	InstancedSphere *spheres = new InstancedSphere(0.6f, 30, 30, transforms);
+	InstancedSphere *spheres = new InstancedSphere(0.6f, 20, 20, transforms);
 
 	VAO lightVAO;
 	lightVAO.Bind();
@@ -123,9 +158,9 @@ int main()
 	lightShader.Activate();
 	glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
 	glUniform4f(glGetUniformLocation(lightShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	shaderProgram.Activate();
-	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPosition"), lightPos.x, lightPos.y, lightPos.z);
+	// shaderProgram.Activate();
+	// glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	// glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPosition"), lightPos.x, lightPos.y, lightPos.z);
 	instanceShader.Activate();
 	glUniform4f(glGetUniformLocation(instanceShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(instanceShader.ID, "lightPosition"), lightPos.x, lightPos.y, lightPos.z);
@@ -142,6 +177,7 @@ int main()
 		// Specify the background color
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		double currentTime = glfwGetTime();
 		nbFrames++;
 		if (currentTime - lastTime >= 1.0)
@@ -160,12 +196,22 @@ int main()
 		camera.updateMatrix(45.0f, 0.1f, 1000.0f);
 		camera.Matrix(instanceShader, "camMatrix");
 
+		double mouseX, mouseY;
+		glfwGetCursorPos(window, &mouseX, &mouseY);
+		glm::vec3 rayOrigin = camera.Position;
+		glm::vec3 rayDir = camera.getRayDirection(mouseX, mouseY, width, height);
+
 		// Draw all spheres
 		// for (Sphere *sphere : spheres)
 		// {
 		// 	// sphere.updateModelMatrix();
 		// 	sphere->draw(shaderProgram);
 		// }
+		int idx = findHoveredSphere(rayOrigin, rayDir, transforms, 0.6);
+		if (idx != -1) {
+			std::cout << "you are pointing to sphere #" << idx << std::endl;
+		}
+		spheres->setHoveredSphere(idx);
 		spheres->drawInstanced(instanceShader, numberOfSpheres);
 
 		// Now activate light shader and render the light source
@@ -187,7 +233,7 @@ int main()
 	EBO2.Delete();
 
 	lightShader.Delete();
-	shaderProgram.Delete();
+	// shaderProgram.Delete();
 	instanceShader.Delete();
 
 	delete spheres;
