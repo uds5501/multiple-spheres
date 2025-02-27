@@ -17,7 +17,7 @@ Actual specs -
 
 
 ## Demo
-[demo](demo.mov)
+[demo](https://youtube.com/shorts/R5YZGdQ08io?si=w2w5Tvhtb_oF_9hc)
 
 Things to improve?
 - Get a GPU
