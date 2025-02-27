@@ -24,6 +24,7 @@ public:
     VBO instanceVBO;
     EBO shapeEBO;
     VBO colorVBO;
+    VBO textureVBO;
 
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
@@ -36,7 +37,7 @@ public:
     glm::mat4 modelMatrix;
     bool initialized = false; // Track if sphere is initialized
 
-    InstancedSphere(float radius, int sectorCount, int stackCount, std::vector<glm::mat4> mat4s);
+    InstancedSphere(float radius, int sectorCount, int stackCount, std::vector<glm::mat4> mat4s, std::vector<int> instanceTextures);
     void drawInstanced(Shader &shader, size_t instanceCount);
     void updateInstanceData(const std::vector<glm::vec3> &positions);
     void generateMesh(float radius, int sectorCount, int stackCount);

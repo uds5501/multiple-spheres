@@ -21,6 +21,7 @@ public:
 	VBO(GLfloat *vertices, GLsizeiptr size);
 	VBO(std::vector<glm::mat4> &mat4s);
 	VBO(std::vector<float> colors);
+	VBO(std::vector<int> &data);
 	// Binds the VBO
 	void Bind();
 	// Unbinds the VBO

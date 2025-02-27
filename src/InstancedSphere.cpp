@@ -4,7 +4,7 @@
 
 // Sphere::Sphere() : VAO(0), VBO(0), EBO(0), initialized(false) {}
 
-InstancedSphere::InstancedSphere(float radius, int sectorCount, int stackCount, std::vector<glm::mat4> mat4s)
+InstancedSphere::InstancedSphere(float radius, int sectorCount, int stackCount, std::vector<glm::mat4> mat4s, std::vector<int> instanceTextures)
 {
     initialized = true;
     instanceMatrix = mat4s;
@@ -23,21 +23,26 @@ InstancedSphere::InstancedSphere(float radius, int sectorCount, int stackCount, 
     shapeVBO = VBO(vertices.data(), static_cast<GLsizeiptr>(sizeof(float) * vertices.size()));
     shapeEBO = EBO(indices.data(), static_cast<GLsizeiptr>(sizeof(unsigned int) * indices.size()));
 
-    shapeVAO.LinkAttrib(shapeVBO, 0, 3, GL_FLOAT, 6 * sizeof(float), (void *)0); // saved the basic mesh points.
-    shapeVAO.LinkAttrib(shapeVBO, 1, 3, GL_FLOAT, 6 * sizeof(float), (void *)(3 * sizeof(float))); // save the indices from the same shape buffer
+    shapeVAO.LinkAttrib(shapeVBO, 0, 3, GL_FLOAT, 8 * sizeof(float), (void *)0);                   // saved the basic mesh points.
+    shapeVAO.LinkAttrib(shapeVBO, 1, 3, GL_FLOAT, 8 * sizeof(float), (void *)(3 * sizeof(float))); // save the indices from the same shape buffer
+    shapeVAO.LinkAttrib(shapeVBO, 2, 2, GL_FLOAT, 8 * sizeof(float), (void *)(6 * sizeof(float))); // save texture coords
 
-    instanceVBO = VBO(mat4s); 
+    instanceVBO = VBO(mat4s);
     for (int i = 0; i < 4; i++)
     {
-        shapeVAO.LinkAttrib(instanceVBO, 2 + i, 4, GL_FLOAT, sizeof(glm::mat4), (void *)(i * sizeof(glm::vec4)));
-        glVertexAttribDivisor(2 + i, 1); // This tells OpenGL this is per-instance
+        shapeVAO.LinkAttrib(instanceVBO, 3 + i, 4, GL_FLOAT, sizeof(glm::mat4), (void *)(i * sizeof(glm::vec4)));
+        glVertexAttribDivisor(3 + i, 1); // This tells OpenGL this is per-instance
     }
-    colorVBO = VBO(instanceColors);
-    shapeVAO.LinkAttrib(colorVBO, 6, 4, GL_FLOAT, 4 * sizeof(float), (void *)0); // link the indices from the color buffer.
-    glVertexAttribDivisor(6, 1);
+    colorVBO = VBO(instanceColors); // this should be dynamic
+    shapeVAO.LinkAttrib(colorVBO, 7, 4, GL_FLOAT, 4 * sizeof(float), (void *)0); // link the indices from the color buffer.
+    glVertexAttribDivisor(7, 1);
+
+    textureVBO = VBO(instanceTextures);
+    textureVBO.Bind();
+    shapeVAO.LinkAttrib(textureVBO, 8, 1, GL_INT, sizeof(int), (void *)0); // texture ids!
+    glVertexAttribDivisor(8, 1);
 
     shapeVAO.Unbind();
-
     shapeVBO.Unbind();
     instanceVBO.Unbind();
     colorVBO.Unbind();
@@ -67,6 +72,12 @@ void InstancedSphere::generateMesh(float radius, int sectorCount, int stackCount
             vertices.push_back(normal.x);
             vertices.push_back(normal.y);
             vertices.push_back(normal.z);
+            
+            // **Texture Coordinates (UV Mapping)**
+            float u = 0.5f + atan2f(y, x) / (2.0f * M_PI);
+            float v = 0.5f - asinf(z / radius) / M_PI;
+            vertices.push_back(u);
+            vertices.push_back(v);
         }
     }
 
@@ -134,6 +145,7 @@ void InstancedSphere::setHoveredSphere(int index)
         instanceColors[offset + 1] = 1.0f; // G
         instanceColors[offset + 2] = 1.0f; // B
         instanceColors[offset + 3] = 1.0f; // A
+        colorVBO.UpdateData(instanceColors);
     }
 
     // Set new hover

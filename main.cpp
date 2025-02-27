@@ -1,4 +1,5 @@
 #define GLM_ENABLE_EXPERIMENTAL
+#define STB_IMAGE_IMPLEMENTATION
 
 #include <iostream>
 #include "glad/glad.h"
@@ -15,6 +16,7 @@
 #include "camera/Camera.h"
 #include "shapes/Sphere.h"
 #include "shapes/InstancedSphere.h"
+#include "stb_image.h"
 
 const unsigned int width = 800;
 const unsigned int height = 800;
@@ -44,6 +46,42 @@ GLuint lightIndices[] =
 		1, 4, 0,
 		4, 5, 6,
 		4, 6, 7};
+
+GLuint loadTexture(const char *filename)
+{
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+
+	// Set texture wrapping options (repeat mode)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	// Set texture filtering options
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// Load the image using stb_image
+	int width, height, numChannels;
+	stbi_set_flip_vertically_on_load(true); // Flip image to match OpenGL's coordinate system
+	unsigned char *data = stbi_load(filename, &width, &height, &numChannels, 0);
+
+	if (data)
+	{
+		GLenum format = (numChannels == 3) ? GL_RGB : GL_RGBA; // Handle RGB and RGBA images
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D); // Generate mipmaps for better scaling
+
+		std::cout << "Loaded texture: " << filename << " (" << width << "x" << height << ")\n";
+	}
+	else
+	{
+		std::cerr << "Failed to load texture: " << filename << std::endl;
+	}
+
+	stbi_image_free(data); // Free image memory
+	return textureID;
+}
 
 int findHoveredSphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayDir,
 					  const std::vector<glm::mat4> &transforms, float radius)
@@ -101,27 +139,29 @@ int main()
 	glfwMakeContextCurrent(window);
 
 	gladLoadGL();
+	if (!gladLoadGL())
+	{
+		std::cerr << "Failed to initialize GLAD!" << std::endl;
+		return -1;
+	}
 	glViewport(0, 0, width, height);
+	stbi_set_flip_vertically_on_load(true);
 
-	// Shader shaderProgram("shaders/default.vert", "shaders/default.frag");
+	GLuint tex1 = loadTexture("textures/Tiles086_2K-JPG_Color.jpg");
+	GLuint tex2 = loadTexture("textures/Tiles100_2K-JPG_Color.jpg");
+	GLuint tex3 = loadTexture("textures/Wood009_2K-JPG_Color.jpg");
+	GLuint tex4 = loadTexture("textures/Wood066_2K-JPG_Color.jpg");
+	std::vector<GLuint> textureIDs = {tex1, tex2, tex3, tex4};
+
 	Shader lightShader("shaders/light.vert", "shaders/light.frag");
 	Shader instanceShader("shaders/instance.vert", "shaders/default.frag");
 
-	// Define multiple spheres at different positions
-	// std::vector<Sphere *> spheres = {
-	// 	new Sphere(0.3f, 20, 20, glm::vec3(-1.0f, 0.0f, -2.0f)),
-	// 	new Sphere(0.3f, 20, 20, glm::vec3(1.0f, 0.0f, -2.0f)),
-	// 	new Sphere(0.3f, 20, 20, glm::vec3(0.0f, 1.0f, -3.0f)),
-	// 	new Sphere(0.6f, 20, 20, glm::vec3(0.0f, -1.0f, -3.0f)),
-	// 	new Sphere(0.3f, 20, 20, glm::vec3(-1.5f, 1.5f, -4.0f)),
-	// 	new Sphere(0.7f, 20, 20, glm::vec3(1.5f, 1.5f, -4.0f)),
-	// 	new Sphere(0.3f, 20, 20, glm::vec3(-1.5f, -1.5f, -4.0f)),
-	// 	new Sphere(0.3f, 20, 20, glm::vec3(1.5f, -1.5f, -4.0f))};
 	std::vector<glm::mat4> transforms;
-	int numberOfSpheres = 100000;
-	float spread = 500.0f;
+	std::vector<int> instanceTextures;
+	int numberOfSpheres = 10000;
+	float spread = 150.0f;
 	transforms.reserve(numberOfSpheres);
-
+	instanceTextures.reserve(numberOfSpheres);
 	for (int i = 0; i < numberOfSpheres; i++)
 	{
 		// Generate random position in a large range
@@ -131,12 +171,13 @@ int main()
 
 		// Apply minor random rotation and scaling for variety
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
-		transform = glm::scale(transform, glm::vec3(0.5f + static_cast<float>(rand()) / RAND_MAX * 2.0f)); // Scale 0.5 to 2.5
+		transform = glm::scale(transform, glm::vec3(0.5f + static_cast<float>(rand()) / RAND_MAX * 1.0f)); // Scale 0.5 to 2.5
 
 		transforms.push_back(transform);
+		int randomTexIndex = rand() % textureIDs.size();
+		instanceTextures.push_back(randomTexIndex);
 	}
-
-	InstancedSphere *spheres = new InstancedSphere(0.6f, 20, 20, transforms);
+	InstancedSphere *spheres = new InstancedSphere(0.6f, 30, 30, transforms, instanceTextures);
 
 	VAO lightVAO;
 	lightVAO.Bind();
@@ -158,12 +199,16 @@ int main()
 	lightShader.Activate();
 	glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
 	glUniform4f(glGetUniformLocation(lightShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	// shaderProgram.Activate();
-	// glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	// glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPosition"), lightPos.x, lightPos.y, lightPos.z);
 	instanceShader.Activate();
 	glUniform4f(glGetUniformLocation(instanceShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(instanceShader.ID, "lightPosition"), lightPos.x, lightPos.y, lightPos.z);
+	for (size_t i = 0; i < textureIDs.size(); i++)
+	{
+		glActiveTexture(GL_TEXTURE0 + i);
+		glBindTexture(GL_TEXTURE_2D, textureIDs[i]);
+		std::string uniformName = "textures[" + std::to_string(i) + "]";
+		glUniform1i(glGetUniformLocation(instanceShader.ID, uniformName.c_str()), i);
+	}
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -175,7 +220,7 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		// Specify the background color
-		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+		glClearColor(0.3f, 0.4f, 0.5f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		double currentTime = glfwGetTime();
@@ -201,16 +246,8 @@ int main()
 		glm::vec3 rayOrigin = camera.Position;
 		glm::vec3 rayDir = camera.getRayDirection(mouseX, mouseY, width, height);
 
-		// Draw all spheres
-		// for (Sphere *sphere : spheres)
-		// {
-		// 	// sphere.updateModelMatrix();
-		// 	sphere->draw(shaderProgram);
-		// }
+		instanceShader.Activate();
 		int idx = findHoveredSphere(rayOrigin, rayDir, transforms, 0.6);
-		if (idx != -1) {
-			std::cout << "you are pointing to sphere #" << idx << std::endl;
-		}
 		spheres->setHoveredSphere(idx);
 		spheres->drawInstanced(instanceShader, numberOfSpheres);
 

@@ -40,12 +40,22 @@ VBO::VBO(std::vector<float> colors)
 	glBindBuffer(GL_ARRAY_BUFFER, ID);
 	glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(float), colors.data(), GL_DYNAMIC_DRAW);
 }
-
-void VBO::UpdateData(std::vector<float>& colors)
+VBO::VBO(std::vector<int> &data)
 {
-    Bind();
-    glBufferSubData(GL_ARRAY_BUFFER, 0, colors.size() * sizeof(float), colors.data());
-    Unbind();
+	if (!init)
+	{
+		init = true;
+		glGenBuffers(1, &ID);
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, ID);
+	glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(int), data.data(), GL_STATIC_DRAW);
+}
+
+void VBO::UpdateData(std::vector<float> &colors)
+{
+	Bind();
+	glBufferSubData(GL_ARRAY_BUFFER, 0, colors.size() * sizeof(float), colors.data());
+	Unbind();
 }
 
 // Binds the VBO
