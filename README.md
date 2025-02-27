@@ -17,7 +17,8 @@ Actual specs -
 
 
 ## Demo
-[demo](https://youtube.com/shorts/R5YZGdQ08io?si=w2w5Tvhtb_oF_9hc)
+[![Watch the video](https://img.youtube.com/vi/R5YZGdQ08io/maxresdefault.jpg)](https://www.youtube.com/shorts/R5YZGdQ08io)
+
 
 Things to improve?
 - Get a GPU
@@ -35,7 +36,7 @@ $ g++ -g -std=c++11 main.cpp src/* -o multi_cube \
 -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo \
 -DGL_SILENCE_DEPRECATION
 
-$ ./multi_cube 0.6 10000=
+$ ./multi_cube 0.6 10000
 ```
 
 ### 🎮 Camera Controls
