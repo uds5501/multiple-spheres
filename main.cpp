@@ -119,10 +119,21 @@ int findHoveredSphere(const glm::vec3 &rayOrigin, const glm::vec3 &rayDir,
 	return closestSphereIndex;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
 	// Initialize GLFW
 	glfwInit();
+	float sphereRadius = 0.6f;
+	int numberOfSpheres = 10000;
+
+	// Check if CLI arguments are provided
+	if (argc > 1)
+		sphereRadius = std::stof(argv[1]); // First argument: Sphere radius
+	if (argc > 2)
+		numberOfSpheres = std::stoi(argv[2]); // Second argument: Number of spheres
+
+	std::cout << "Sphere Radius: " << sphereRadius << std::endl;
+	std::cout << "Number of Spheres: " << numberOfSpheres << std::endl;
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -158,8 +169,7 @@ int main()
 
 	std::vector<glm::mat4> transforms;
 	std::vector<int> instanceTextures;
-	int numberOfSpheres = 10000;
-	float spread = 150.0f;
+	float spread = 200.0f;
 	transforms.reserve(numberOfSpheres);
 	instanceTextures.reserve(numberOfSpheres);
 	for (int i = 0; i < numberOfSpheres; i++)
@@ -177,7 +187,7 @@ int main()
 		int randomTexIndex = rand() % textureIDs.size();
 		instanceTextures.push_back(randomTexIndex);
 	}
-	InstancedSphere *spheres = new InstancedSphere(0.6f, 30, 30, transforms, instanceTextures);
+	InstancedSphere *spheres = new InstancedSphere(sphereRadius, 30, 30, transforms, instanceTextures);
 
 	VAO lightVAO;
 	lightVAO.Bind();

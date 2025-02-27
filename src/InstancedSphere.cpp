@@ -145,7 +145,6 @@ void InstancedSphere::setHoveredSphere(int index)
         instanceColors[offset + 1] = 1.0f; // G
         instanceColors[offset + 2] = 1.0f; // B
         instanceColors[offset + 3] = 1.0f; // A
-        colorVBO.UpdateData(instanceColors);
     }
 
     // Set new hover
@@ -158,8 +157,8 @@ void InstancedSphere::setHoveredSphere(int index)
         instanceColors[offset + 2] = 0.0f; // B
         instanceColors[offset + 3] = 1.0f; // A
 
-        colorVBO.UpdateData(instanceColors);
     }
+    colorVBO.UpdateData(instanceColors);
 }
 
 // Destructor
