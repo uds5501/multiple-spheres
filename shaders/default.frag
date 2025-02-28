@@ -46,7 +46,7 @@ void main()
     if (color.r == 1.0 && color.g == 1.0 && color.b == 0.0) {
         float auraStrength = 0.4;
         float normalEdge = 1.0 - max(dot(normalize(cameraPosition - currentPosition), normal), 0.0);
-        vec4 auraColor = vec4(1.0, 0.3, 0.1, 1.0) * normalEdge * auraStrength;
+        vec4 auraColor = vec4(1.0, 1.0, 1.0, 0.5) * normalEdge * auraStrength;
         result += auraColor;
     }
     FragColor = result;

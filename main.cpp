@@ -16,36 +16,11 @@
 #include "camera/Camera.h"
 #include "shapes/Sphere.h"
 #include "shapes/InstancedSphere.h"
+#include "shapes/LightSource.h"
 #include "stb_image.h"
 
 const unsigned int width = 800;
 const unsigned int height = 800;
-
-GLfloat lightVertices[] =
-	{ //     COORDINATES     //
-		-0.1f, -0.1f, 0.1f,
-		-0.1f, -0.1f, -0.1f,
-		0.1f, -0.1f, -0.1f,
-		0.1f, -0.1f, 0.1f,
-		-0.1f, 0.1f, 0.1f,
-		-0.1f, 0.1f, -0.1f,
-		0.1f, 0.1f, -0.1f,
-		0.1f, 0.1f, 0.1f};
-
-GLuint lightIndices[] =
-	{
-		0, 1, 2,
-		0, 2, 3,
-		0, 4, 7,
-		0, 7, 3,
-		3, 7, 6,
-		3, 6, 2,
-		2, 6, 5,
-		2, 5, 1,
-		1, 5, 4,
-		1, 4, 0,
-		4, 5, 6,
-		4, 6, 7};
 
 GLuint loadTexture(const char *filename)
 {
@@ -187,31 +162,16 @@ int main(int argc, char *argv[])
 		int randomTexIndex = rand() % textureIDs.size();
 		instanceTextures.push_back(randomTexIndex);
 	}
-	InstancedSphere *spheres = new InstancedSphere(sphereRadius, 30, 30, transforms, instanceTextures);
-
-	VAO lightVAO;
-	lightVAO.Bind();
-	lightVAO.PrintID();
-
-	VBO VBO2(lightVertices, sizeof(lightVertices));
-	EBO EBO2(lightIndices, sizeof(lightIndices));
-
-	lightVAO.LinkAttrib(VBO2, 0, 3, GL_FLOAT, 3 * sizeof(float), (void *)0);
-	lightVAO.Unbind();
-	VBO2.Unbind();
-	EBO2.Unbind();
-
+	InstancedSphere *spheres = new InstancedSphere(sphereRadius, 30, 30, transforms, instanceTextures, textureIDs.size());
 	glm::vec3 lightPos = glm::vec3(0.0f, 0.5f, 0.0f);
 	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	glm::mat4 lightModel = glm::mat4(1.0f);
-	lightModel = glm::translate(lightModel, lightPos);
+
+	LightSource *lightSource = new LightSource(lightPos, lightColor);
 
 	lightShader.Activate();
-	glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
-	glUniform4f(glGetUniformLocation(lightShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	instanceShader.Activate();
-	glUniform4f(glGetUniformLocation(instanceShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(instanceShader.ID, "lightPosition"), lightPos.x, lightPos.y, lightPos.z);
+	lightSource->updateShaders(lightShader, instanceShader);
+
 	for (size_t i = 0; i < textureIDs.size(); i++)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
@@ -225,11 +185,13 @@ int main(int argc, char *argv[])
 	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 5.0f));
 	double lastTime = glfwGetTime();
 	int nbFrames = 0;
+	bool mouseClicked = false;
 
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
 		// Specify the background color
+		bool didClick = false;
 		glClearColor(0.3f, 0.4f, 0.5f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -253,37 +215,40 @@ int main(int argc, char *argv[])
 
 		double mouseX, mouseY;
 		glfwGetCursorPos(window, &mouseX, &mouseY);
+		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
+		{
+			if (!mouseClicked)
+			{
+				mouseClicked = true;
+			}
+		}
+		else if (mouseClicked && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
+		{
+			mouseClicked = false;
+			didClick = true;
+		}
 		glm::vec3 rayOrigin = camera.Position;
 		glm::vec3 rayDir = camera.getRayDirection(mouseX, mouseY, width, height);
 
-		instanceShader.Activate();
 		int idx = findHoveredSphere(rayOrigin, rayDir, transforms, 0.6);
-		spheres->setHoveredSphere(idx);
+		spheres->setHoveredSphere(idx, didClick);
 		spheres->drawInstanced(instanceShader, numberOfSpheres);
 
-		// Now activate light shader and render the light source
 		lightShader.Activate();
 		camera.Matrix(lightShader, "camMatrix");
-		lightVAO.Bind();
-
-		glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
-		glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(int), GL_UNSIGNED_INT, 0);
-		lightVAO.Unbind();
+		lightSource->draw(lightShader);
 
 		// Swap buffers and poll events
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
-	lightVAO.Delete();
-	VBO2.Delete();
-	EBO2.Delete();
-
 	lightShader.Delete();
 	// shaderProgram.Delete();
 	instanceShader.Delete();
 
 	delete spheres;
+	delete lightSource;
 	// Delete window before ending the program
 	glfwDestroyWindow(window);
 	// Terminate GLFW before ending the program

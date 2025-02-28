@@ -31,17 +31,19 @@ public:
     std::vector<glm::mat4> instanceMatrix;
     int hoveredSphereIndex = -1;
     std::vector<float> instanceColors;
+    std::vector<int> instanceTextureID;
+    int textureSize = -1;
 
     float radius;
     glm::vec3 position;
     glm::mat4 modelMatrix;
     bool initialized = false; // Track if sphere is initialized
 
-    InstancedSphere(float radius, int sectorCount, int stackCount, std::vector<glm::mat4> mat4s, std::vector<int> instanceTextures);
+    InstancedSphere(float radius, int sectorCount, int stackCount, std::vector<glm::mat4> mat4s, std::vector<int> instanceTextures, int textureSize);
     void drawInstanced(Shader &shader, size_t instanceCount);
     void updateInstanceData(const std::vector<glm::vec3> &positions);
     void generateMesh(float radius, int sectorCount, int stackCount);
-    void setHoveredSphere(int index);
+    void setHoveredSphere(int index, bool didClick);
     ~InstancedSphere();
 };
 

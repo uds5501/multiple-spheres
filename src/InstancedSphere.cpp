@@ -4,10 +4,12 @@
 
 // Sphere::Sphere() : VAO(0), VBO(0), EBO(0), initialized(false) {}
 
-InstancedSphere::InstancedSphere(float radius, int sectorCount, int stackCount, std::vector<glm::mat4> mat4s, std::vector<int> instanceTextures)
+InstancedSphere::InstancedSphere(float radius, int sectorCount, int stackCount, std::vector<glm::mat4> mat4s, std::vector<int> instanceTextures, int textureSize)
 {
     initialized = true;
     instanceMatrix = mat4s;
+    instanceTextureID = instanceTextures;
+    this -> textureSize = textureSize;
 
     generateMesh(radius, sectorCount, stackCount);
 
@@ -33,7 +35,7 @@ InstancedSphere::InstancedSphere(float radius, int sectorCount, int stackCount, 
         shapeVAO.LinkAttrib(instanceVBO, 3 + i, 4, GL_FLOAT, sizeof(glm::mat4), (void *)(i * sizeof(glm::vec4)));
         glVertexAttribDivisor(3 + i, 1); // This tells OpenGL this is per-instance
     }
-    colorVBO = VBO(instanceColors); // this should be dynamic
+    colorVBO = VBO(instanceColors);                                              // this should be dynamic
     shapeVAO.LinkAttrib(colorVBO, 7, 4, GL_FLOAT, 4 * sizeof(float), (void *)0); // link the indices from the color buffer.
     glVertexAttribDivisor(7, 1);
 
@@ -72,7 +74,7 @@ void InstancedSphere::generateMesh(float radius, int sectorCount, int stackCount
             vertices.push_back(normal.x);
             vertices.push_back(normal.y);
             vertices.push_back(normal.z);
-            
+
             // **Texture Coordinates (UV Mapping)**
             float u = 0.5f + atan2f(y, x) / (2.0f * M_PI);
             float v = 0.5f - asinf(z / radius) / M_PI;
@@ -132,8 +134,15 @@ void InstancedSphere::drawInstanced(Shader &shader, size_t instanceCount)
     shapeVAO.Unbind();
 }
 
-void InstancedSphere::setHoveredSphere(int index)
+void InstancedSphere::setHoveredSphere(int index, bool didClick)
 {
+    if (didClick)
+    {
+        instanceTextureID[index] = (instanceTextureID[index] + 1) % textureSize;
+        textureVBO.UpdateData(instanceTextureID);
+        std::cout << "texture size - " << textureSize << "\n";
+        std::cout << "changing index of " << index << " to " << instanceTextureID[index] << std ::endl;
+    }
     if (hoveredSphereIndex == index)
         return;
 
@@ -156,7 +165,6 @@ void InstancedSphere::setHoveredSphere(int index)
         instanceColors[offset + 1] = 1.0f; // G
         instanceColors[offset + 2] = 0.0f; // B
         instanceColors[offset + 3] = 1.0f; // A
-
     }
     colorVBO.UpdateData(instanceColors);
 }

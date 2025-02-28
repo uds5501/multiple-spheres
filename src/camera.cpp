@@ -22,28 +22,29 @@ void Camera::Matrix(Shader &shader, const char *uniform)
     glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, glm::value_ptr(cameraMatrix));
 }
 
-glm::vec3 Camera::getRayDirection(double mouseX, double mouseY, int windowWidth, int windowHeight) {
+glm::vec3 Camera::getRayDirection(double mouseX, double mouseY, int windowWidth, int windowHeight)
+{
     // Convert mouse coordinates to normalized device coordinates (-1 to 1)
     float x = (2.0f * mouseX) / windowWidth - 1.0f;
     float y = 1.0f - (2.0f * mouseY) / windowHeight; // Flip Y
-    
+
     // Create inverse of camera matrix
     glm::mat4 inverseCameraMatrix = glm::inverse(cameraMatrix);
-    
+
     // Create ray in NDC space
     glm::vec4 rayStartNDC = glm::vec4(x, y, -1.0f, 1.0f);
     glm::vec4 rayEndNDC = glm::vec4(x, y, 0.0f, 1.0f);
-    
+
     // Transform to world space
     glm::vec4 rayStartWorld = inverseCameraMatrix * rayStartNDC;
     rayStartWorld /= rayStartWorld.w;
-    
+
     glm::vec4 rayEndWorld = inverseCameraMatrix * rayEndNDC;
     rayEndWorld /= rayEndWorld.w;
-    
+
     // Get direction
     glm::vec3 rayDir = glm::normalize(glm::vec3(rayEndWorld - rayStartWorld));
-    
+
     return rayDir;
 }
 
@@ -88,27 +89,35 @@ void Camera::Inputs(GLFWwindow *window)
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Lock cursor but don't reset it
 
-        if (firstClick)
+        static double lastX = 0.0, lastY = 0.0; // Store last cursor position
+        double mx, my;
+        glfwGetCursorPos(window, &mx, &my);
+
+        if (firstClick) // Initialize cursor position on first click
         {
-            glfwSetCursorPos(window, (width / 2), (height / 2));
+            lastX = mx;
+            lastY = my;
             firstClick = false;
         }
 
-        double mx;
-        double my;
-        glfwGetCursorPos(window, &mx, &my);
-        float rotX = sensitivity * (float)(my - (height / 2)) / height;
-        float rotY = sensitivity * (float)(mx - (width / 2)) / width;
+        float rotX = sensitivity * (float)(my - lastY) / height;
+        float rotY = sensitivity * (float)(mx - lastX) / width;
+
         glm::vec3 newOrientation = glm::rotate(Orientation, glm::radians(-rotX), glm::normalize(glm::cross(-Orientation, Up)));
-        // prevent barrel roll.
+
+        // Prevent barrel roll
         if (!(glm::angle(newOrientation, Up) <= glm::radians(5.0f) || glm::angle(newOrientation, -Up) <= glm::radians(5.0f)))
         {
             Orientation = newOrientation;
         }
+
         Orientation = glm::rotate(Orientation, glm::radians(-rotY), Up);
-        glfwSetCursorPos(window, (width / 2), (height / 2));
+
+        // Update last cursor position for the next frame
+        lastX = mx;
+        lastY = my;
     }
     else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
     {
